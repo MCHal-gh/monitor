@@ -1,33 +1,38 @@
-name: Planetum Web Monitor
+name: Selenium testy na Ubuntu
 
 on:
   schedule:
-    - cron: "0 * * * *"  # každou hodinu
-  workflow_dispatch:      # ruční spuštění
+    - cron: '0 0 * * *'   # Spuštění každý den o půlnoci
+  workflow_dispatch:      # Umožňuje ruční spuštění workflow
 
 jobs:
-  check-planetum:
-    runs-on: ubuntu-latest
+  selenium_tests:
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.11
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install selenium webdriver-manager
+    - name: Install dependencies including Chromium and ChromeDriver
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxss1 libappindicator1 libindicator7 build-essential chromium chromium-driver
+        pip install selenium requests beautifulsoup4
 
-      - name: Install Chrome
-        uses: browser-actions/setup-chrome@v1
+    - name: Verify Chromium version
+      run: chromium --version
 
-      - name: Run Selenium monitor
-        env:
-          GMAIL_USER: ${{ secrets.GMAIL_USER }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        run: planetum_kontrola_gmail_pythonanywhere.py
+    - name: Verify ChromeDriver version
+      run: chromedriver --version
+
+    - name: Run Selenium test script
+      env:
+        GMAIL_USER: ${{ secrets.GMAIL_USER }}
+        GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+      run: |
+        python path/to/your_selenium_test_script.py
