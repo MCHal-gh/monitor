@@ -1,0 +1,36 @@
+name: Planetum Monitor Scheduler  # Jméno, které uvidíte v sekci Actions
+
+on:
+  schedule:
+    # Plán pro spouštění: Každou hodinu (*), v 15. minutě (15).
+    # Čas je v UTC!
+    - cron: '15 * * * *'
+  workflow_dispatch: # Umožňuje ruční spuštění pro testování
+
+jobs:
+  run_scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies and Chromium 🛠️
+        # Níže jsou příkazy pro instalaci headless prohlížeče a Python knihoven.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+          pip install selenium requests beautifulsoup4
+
+      - name: Run Python script 🚀
+        # Zde předáváme heslo a uživatele jako Proměnné prostředí.
+        env:
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+        run: |
+          # Spuštění vašeho Python skriptu (ujistěte se, že název souhlasí!)
+          python planetum_kontrola.py
