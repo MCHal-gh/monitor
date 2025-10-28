@@ -2,6 +2,7 @@ import os
 import time
 import smtplib
 import traceback
+from datetime import datetime
 from email.mime.text import MIMEText
 from email.utils import formatdate
 from selenium import webdriver
@@ -20,6 +21,7 @@ TARGET_TEXT = "Prosinec 2025"
 ODESILATEL = os.environ.get("GMAIL_USER")
 HESLO = os.environ.get("GMAIL_APP_PASSWORD")
 PRIJEMCE = ODESILATEL  # např. posíláme e-mail sobě
+INTERVAL = 3300  # kontrola každou hodinu
 
 # ==================================
 # 📧 Funkce pro odeslání e-mailu
@@ -50,7 +52,7 @@ def zkontroluj_stranku_selenium(url):
     print(f"🔍 Kontroluji {url} pomocí Selenium...")
 
     options = Options()
-    options.add_argument("--headless")  # stabilní headless
+    options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
@@ -85,12 +87,18 @@ def zkontroluj_stranku_selenium(url):
         print("🧹 ChromeDriver ukončen.")
 
 # ==================================
-# 🔄 Hlavní spouštění (jen jednorázově)
+# 🕒 Hlavní běh
 # ==================================
 if __name__ == "__main__":
-    print("▶️ Spouštím monitorovací skript Planetum.cz...")
+    start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"▶️ Spouštím monitorovací skript Planetum.cz v {start_time} (UTC).")
+
     if not ODESILATEL or not HESLO:
         print("❌ Proměnné GMAIL_USER a GMAIL_APP_PASSWORD nejsou nastaveny. Ukončuji.")
     else:
-        zkontroluj_stranku_selenium(URL)
-        print("✅ Skript dokončen.")
+        success = zkontroluj_stranku_selenium(URL)
+        end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if success:
+            print(f"✅ Podmínka splněna – skript se ukončuje ({end_time} UTC).")
+        else:
+            print(f"✅ Skript dokončen bez nálezu ({end_time} UTC).")
