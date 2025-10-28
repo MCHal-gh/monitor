@@ -35,4 +35,4 @@ jobs:
         GMAIL_USER: ${{ secrets.GMAIL_USER }}
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
       run: |
-        python Users/milan_chaloupecky/Documents/planetum_kontrola_gmail_pythonanywhere.py
+        python planetum_kontrola_gmail_pythonanywhere.py
