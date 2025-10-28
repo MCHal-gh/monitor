@@ -1,54 +1,34 @@
-name: Kontrola Planetum PythonAnywhere
+name: Planetum Web Monitor
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Spouští se každý den v půlnoci
-  workflow_dispatch:     # Umožňuje ruční spuštění workflow
+    - cron: "0 * * * *"  # každou hodinu
+  workflow_dispatch:      # umožní ruční spuštění
 
 jobs:
-  run_scraper:
-    runs-on: ubuntu-22.04
+  check-planetum:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout kód 📦
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Nastavení Python 3.11 🐍
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: "3.11"
 
-      - name: Instalace závislostí a Chromium 🛠️
+      - name: Install dependencies
         run: |
-          echo "🔧 Instalace Chromium a Python knihoven..."
-          sudo apt-get update
-          sudo apt-get install -y libxss1 libappindicator1 libindicator7 build-essential
-          sudo apt-get install -y chromium-browser || sudo apt-get install -y chromium
-          pip install --upgrade pip
-          pip install selenium requests beautifulsoup4
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager
 
-      - name: Zjisti cestu k Chromium 🔍
-        id: find_chromium
-        run: |
-          set -e
-          chromium_path="$(which chromium || which chromium-browser || true)"
-          if [ -z "$chromium_path" ]; then
-            echo "❌ Chromium nebyl nalezen!"
-            exit 1
-          fi
-          echo "✅ Nalezen Chromium na cestě: $chromium_path"
-          echo "CHROME_BIN=$chromium_path" >> $GITHUB_ENV
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
 
-      - name: Kontrola verze Chromium 🌐
-        run: |
-          $CHROME_BIN --version
-
-      - name: Spuštění Python skriptu 🚀
+      - name: Run Selenium monitor
         env:
-          GMAIL_USER: ${{ secrets.GMAIL_USER }}
-          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
-          CHROME_BIN: ${{ env.CHROME_BIN }}
-        run: |
-          echo "▶️ Spouštím Python skript s Chromiem: $CHROME_BIN"
-          python planetum_kontrola_gmail_pythonanywhere.py
-          echo "✅ Skript dokončen."
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        run: python planetum_monitor.py
