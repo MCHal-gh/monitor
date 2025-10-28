@@ -1,14 +1,13 @@
-name: Planetum Monitor Scheduler
+name: Planetum Monitor Scheduler (Možnost A)
 
 on:
   schedule:
     # Spustí se každou hodinu v 15 minut po celé hodině (čas je UTC)
     - cron: '15 * * * *' 
-  workflow_dispatch: # Povolí ruční spuštění přes rozhraní GitHubu
+  workflow_dispatch: # Povolí ruční spuštění pro testování
 
 jobs:
   run_scraper:
-    # Použijeme stabilní Linuxový server pro spuštění
     runs-on: ubuntu-latest 
     steps:
       - name: Checkout code
@@ -19,23 +18,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies and Chromium
-        # Instalace headless prohlížeče Chromium a všech Python knihoven.
+      - name: Install Google Chrome/Chromium 🌟
+        # TENTO KROK NAHRADÍ APT-GET! Nainstaluje kompatibilní Chrome a WebDriver
+        id: install-chrome 
+        uses: browser-actions/setup-chrome@latest
+        # DŮLEŽITÉ: Ukládá cesty do výstupních proměnných (chrome-path, driver-path)
+      
+      - name: Install Python dependencies
         run: |
-          echo "Instaluji Chromium a Python knihovny..."
-          # Aktualizace systému a instalace Chromium a jeho závislostí
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser
-          # Instalace Selenium a dalších
+          echo "Instaluji Selenium a další knihovny..."
           pip install selenium requests beautifulsoup4
 
       - name: Run Python script 🚀
-        # Předání citlivých Secrets do proměnných prostředí Pythonu
+        # PŘEDÁNÍ CEST K INSTALOVANÉMU PROHLÍŽEČI A OVLADAČI
         env:
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          # Klíčové proměnné, které Python skript využije:
+          CHROME_PATH: ${{ steps.install-chrome.outputs.chrome-path }}
+          CHROME_DRIVER_PATH: ${{ steps.install-chrome.outputs.driver-path }}
         run: |
-          echo "Spouštím Python skript..."
-          # Zde je klíčová shoda názvu souboru!
+          echo "Spouštím Python skript s dynamickými cestami..."
           python planetum_kontrola_gmail_pythonanywhere.py 
           echo "Skript dokončen."
