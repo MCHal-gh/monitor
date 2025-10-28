@@ -20,7 +20,6 @@ TARGET_TEXT = "Prosinec 2025"
 ODESILATEL = os.environ.get("GMAIL_USER")
 HESLO = os.environ.get("GMAIL_APP_PASSWORD")
 PRIJEMCE = ODESILATEL  # např. posíláme e-mail sobě
-INTERVAL = 3600  # kontrola každou hodinu
 
 # ==================================
 # 📧 Funkce pro odeslání e-mailu
@@ -51,7 +50,7 @@ def zkontroluj_stranku_selenium(url):
     print(f"🔍 Kontroluji {url} pomocí Selenium...")
 
     options = Options()
-    options.add_argument("--headless=new")
+    options.add_argument("--headless")  # stabilní headless
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
@@ -86,16 +85,12 @@ def zkontroluj_stranku_selenium(url):
         print("🧹 ChromeDriver ukončen.")
 
 # ==================================
-# 🔄 Hlavní smyčka
+# 🔄 Hlavní spouštění (jen jednorázově)
 # ==================================
 if __name__ == "__main__":
     print("▶️ Spouštím monitorovací skript Planetum.cz...")
     if not ODESILATEL or not HESLO:
         print("❌ Proměnné GMAIL_USER a GMAIL_APP_PASSWORD nejsou nastaveny. Ukončuji.")
     else:
-        while True:
-            if zkontroluj_stranku_selenium(URL):
-                print("✅ Podmínka splněna – skript se ukončuje.")
-                break
-            print(f"⏳ Další kontrola za {INTERVAL / 60:.0f} minut...\n")
-            time.sleep(INTERVAL)
+        zkontroluj_stranku_selenium(URL)
+        print("✅ Skript dokončen.")
