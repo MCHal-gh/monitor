@@ -34,6 +34,7 @@ jobs:
       run: |
         pwd
         ls -la
+        ls -la src/
 
     - name: Run Selenium test script
       env:
