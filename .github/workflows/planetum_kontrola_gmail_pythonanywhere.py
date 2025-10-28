@@ -12,12 +12,16 @@ from selenium.webdriver.common.by import By
 # ====== ⚙️ NASTAVENÍ SKRIPTU ======
 # ==================================
 URL = "https://www.planetum.cz/porad/918-hurvinkova-vesmirna-odysea"
-PRIJEMCE = "milan.chaloupecky@email.com"  # E-mail, kam má přijít upozornění
-TARGET_TEXT = "Listopad 2025"             # Cílový text, který hledáte
+PRIJEMCE = "milan.chaloupecky@email.com"
+TARGET_TEXT = "Listopad 2025"             
 
-# 🌟 DŮLEŽITÉ: Načtení z Proměnných Prostředí (GitHub Secrets)
+# Načtení z Proměnných Prostředí (GitHub Secrets)
 ODESILATEL = os.environ.get("GMAIL_USER")
 HESLO = os.environ.get("GMAIL_PASSWORD")
+
+# Načtení cest k prohlížeči a ovladači z YAML (Klíčové pro Možnost A!)
+CHROME_PATH = os.environ.get("CHROME_PATH")
+CHROME_DRIVER_PATH = os.environ.get("CHROME_DRIVER_PATH")
 
 # =========================================
 # ====== 📧 FUNKCE NA ODESLÁNÍ EMAILU ======
@@ -28,6 +32,7 @@ def posli_email(predmet, zprava):
         print("❌ Nelze odeslat e-mail: Chybí GMAIL_USER nebo GMAIL_PASSWORD.")
         return False
         
+    # ... (zde je kód pro odeslání e-mailu – zůstává stejný) ...
     try:
         msg = MIMEText(zprava, 'plain', 'utf-8')
         msg["Subject"] = predmet
@@ -50,40 +55,41 @@ def posli_email(predmet, zprava):
 # =======================================
 def zkontroluj_stranku_selenium(url):
     """
-    Stáhne stránku pomocí Headless Chrome, konfigurovaného pro Linux server.
+    Stáhne stránku pomocí Headless Chrome, s dynamickou konfigurací cest.
     """
-    print(f"Kontroluji {url} pomocí Selenium (Headless Chrome na GitHub Actions - FINÁLNÍ KONFIGURACE)...")
+    print(f"Kontroluji {url} (Možnost A - Dynamické cesty)...")
     
-    # --- Nastavení Chrome Options pro Headless mód na Linuxu ---
+    # --- Nastavení Chrome Options pro Headless mód ---
     chrome_options = ChromeOptions()
-    
-    # Základní a nejdůležitější nastavení:
-    chrome_options.add_argument("--headless=new")         # Moderní Headless mód
+    chrome_options.add_argument("--headless=new")         
     chrome_options.add_argument("--no-sandbox")            
-    chrome_options.add_argument("--disable-dev-shm-usage") 
-    
-    # Argumenty pro řešení "zaseknutí" a stabilitu:
+    chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--remote-debugging-pipe") 
     chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-software-rasterizer")
     
-    # Cesta k Chromium nainstalovanému pomocí apt-get (musí odpovídat v YAML)
-    chrome_options.binary_location = "/usr/bin/chromium-browser"
-    # --- Konec nastavení ---
+    # Nastavení binární cesty POUZE POKUD ji Action předal
+    if CHROME_PATH:
+        chrome_options.binary_location = CHROME_PATH
     
     driver = None
     try:
-        driver = webdriver.Chrome(options=chrome_options) 
-        driver.set_page_load_timeout(45) # Timeout nastaven na 45 sekund
+        # POUŽITÍ SLUŽBY: Zde je klíč k úspěchu v Možnosti A
+        if CHROME_DRIVER_PATH:
+            service = webdriver.ChromeService(executable_path=CHROME_DRIVER_PATH)
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+        else:
+             # Fallback, pokud cesty nejsou k dispozici (měla by selhat)
+             print("❌ CHYBA CESTY: Chybí CHROME_DRIVER_PATH. Spouštím bez explicitní cesty...")
+             driver = webdriver.Chrome(options=chrome_options) 
+        
+        driver.set_page_load_timeout(45)
         
         driver.get(url)
-        time.sleep(5)  # Dáme čas na načtení JavaScriptu
+        time.sleep(5) 
         
         page_text = driver.find_element(By.TAG_NAME, "body").text
 
-        # Kontrola textu
         if TARGET_TEXT in page_text:
             print(f"🎯 Nalezen text '{TARGET_TEXT}'!")
             posli_email(
@@ -97,19 +103,16 @@ def zkontroluj_stranku_selenium(url):
 
     except Exception as e:
         print(f"❌ Došlo k chybě během Selenium operace: {e}")
-        # V případě chyby může být užitečné uložit screenshot pro ladění (na serveru)
-        # driver.save_screenshot("error_screenshot.png") 
         return False
     finally:
         if driver:
             driver.quit()
 
 # ================================
-# ====== 🔄 HLAVNÍ BLOK (Spustí se jen jednou) ======
+# ====== 🔄 HLAVNÍ BLOK ======
 # ================================
 if __name__ == "__main__":
     
-    # Kontrola kritických Secrets hned na začátku
     if not ODESILATEL or not HESLO:
         print("❌ KRITICKÁ CHYBA: Chybí GMAIL_USER nebo GMAIL_PASSWORD v GitHub Secrets.")
         sys.exit(1)
