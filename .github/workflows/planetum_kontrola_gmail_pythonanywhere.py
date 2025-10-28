@@ -5,27 +5,27 @@ import traceback
 from email.mime.text import MIMEText
 from email.utils import formatdate
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 # ==================================
 # ⚙️ NASTAVENÍ SKRIPTU
 # ==================================
 URL = "https://www.planetum.cz/porad/918-hurvinkova-vesmirna-odysea"
-ODESILATEL = "chaloupecky.milan@gmail.com"
-PRIJEMCE = "milan.chaloupecky@email.com"
-HESLO = "frbcfizgpxjsrmzv"  # Gmail App Password (ne běžné heslo)
-INTERVAL = 3600              # kontrola každou hodinu
 TARGET_TEXT = "Prosinec 2025"
 
+# Gmail údaje načítané z GitHub Secrets
+ODESILATEL = os.environ.get("GMAIL_USER")
+HESLO = os.environ.get("GMAIL_APP_PASSWORD")
+PRIJEMCE = ODESILATEL  # např. posíláme e-mail sobě
+INTERVAL = 3600  # kontrola každou hodinu
 
 # ==================================
-# 📧 FUNKCE NA ODESLÁNÍ EMAILU
+# 📧 Funkce pro odeslání e-mailu
 # ==================================
 def posli_email(predmet, zprava):
-    """Odešle e-mail pomocí Gmailu (SMTP)."""
     try:
         msg = MIMEText(zprava, "plain", "utf-8")
         msg["Subject"] = predmet
@@ -37,77 +37,65 @@ def posli_email(predmet, zprava):
             server.starttls()
             server.login(ODESILATEL, HESLO)
             server.send_message(msg)
-            print("✅ E-mail byl úspěšně odeslán.")
+            print("✅ E-mail byl odeslán.")
     except smtplib.SMTPAuthenticationError:
-        print("❌ Chyba autentizace – zkontroluj App Password.")
+        print("❌ Chyba autentizace – zkontrolujte App Password.")
     except Exception as e:
         print(f"❌ Chyba při odesílání e-mailu: {e}")
         traceback.print_exc()
 
-
 # ==================================
-# 🔎 FUNKCE NA KONTROLU STRÁNKY
+# 🔎 Funkce pro kontrolu stránky
 # ==================================
 def zkontroluj_stranku_selenium(url):
-    """
-    Načte stránku pomocí Selenium, hledá zadaný text a při nalezení pošle e-mail.
-    """
-    print(f"🔍 Kontroluji stránku: {url}")
+    print(f"🔍 Kontroluji {url} pomocí Selenium...")
 
-    # Nastavení Chrome Options
-    chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920,1080")
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
 
-    # ✅ Automatické stažení správného ChromeDriveru
+    driver = None
     try:
         service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-    except Exception as e:
-        print(f"❌ Chyba při spouštění ChromeDriveru: {e}")
-        traceback.print_exc()
-        return False
-
-    try:
+        driver = webdriver.Chrome(service=service, options=options)
         driver.get(url)
-        print("🌐 Stránka načtena, čekám na JavaScript...")
-        time.sleep(5)
 
+        time.sleep(5)  # krátká pauza pro načtení JS
         page_text = driver.find_element(By.TAG_NAME, "body").text
 
         if TARGET_TEXT in page_text:
             print(f"🎯 Nalezen text '{TARGET_TEXT}'!")
             posli_email(
-                f"Planetum.cz – nalezen text: {TARGET_TEXT}",
+                f"Planetum.cz – nalezen '{TARGET_TEXT}'!",
                 f"Na stránce Planetum.cz byl nalezen text '{TARGET_TEXT}'.\n\n{url}"
             )
             return True
         else:
-            print(f"🔎 Text '{TARGET_TEXT}' zatím nenalezen.")
+            print(f"🔍 Zatím nic (text '{TARGET_TEXT}' nenalezen).")
             return False
 
     except Exception as e:
-        print(f"❌ Chyba během kontroly stránky: {e}")
+        print("❌ Chyba během kontroly stránky:")
         traceback.print_exc()
         return False
     finally:
-        driver.quit()
+        if driver:
+            driver.quit()
         print("🧹 ChromeDriver ukončen.")
 
-
 # ==================================
-# 🔁 HLAVNÍ SMYČKA
+# 🔄 Hlavní smyčka
 # ==================================
 if __name__ == "__main__":
-    print("▶️ Spouštím monitorovací skript pro Planetum.cz")
-    while True:
-        nalezeno = zkontroluj_stranku_selenium(URL)
-        if nalezeno:
-            print("✅ Podmínka splněna. Skript se ukončuje.")
-            break
-
-        print(f"⏳ Další kontrola za {INTERVAL / 60:.0f} minut...\n")
-        time.sleep(INTERVAL)
+    print("▶️ Spouštím monitorovací skript Planetum.cz...")
+    if not ODESILATEL or not HESLO:
+        print("❌ Proměnné GMAIL_USER a GMAIL_APP_PASSWORD nejsou nastaveny. Ukončuji.")
+    else:
+        while True:
+            if zkontroluj_stranku_selenium(URL):
+                print("✅ Podmínka splněna – skript se ukončuje.")
+                break
+            print(f"⏳ Další kontrola za {INTERVAL / 60:.0f} minut...\n")
+            time.sleep(INTERVAL)
