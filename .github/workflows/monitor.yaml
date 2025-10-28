@@ -3,7 +3,7 @@ name: Planetum Web Monitor
 on:
   schedule:
     - cron: "0 * * * *"  # každou hodinu
-  workflow_dispatch:      # umožní ruční spuštění
+  workflow_dispatch:      # ruční spuštění
 
 jobs:
   check-planetum:
@@ -28,7 +28,6 @@ jobs:
 
       - name: Run Selenium monitor
         env:
-          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
-          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-        run: python planetum_monitor.py
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: planetum_kontrola_gmail_pythonanywhere.py
