@@ -1,15 +1,15 @@
-name: Planetum Monitor Scheduler  # Jméno, které uvidíte v sekci Actions
+name: Planetum Monitor Scheduler
 
 on:
   schedule:
-    # Plán pro spouštění: Každou hodinu (*), v 15. minutě (15).
-    # Čas je v UTC!
-    - cron: '15 * * * *'
-  workflow_dispatch: # Umožňuje ruční spuštění pro testování
+    # Spustí se každou hodinu v 15 minut po celé hodině (čas je UTC)
+    - cron: '15 * * * *' 
+  workflow_dispatch: # Povolí ruční spuštění přes rozhraní GitHubu
 
 jobs:
   run_scraper:
-    runs-on: ubuntu-latest
+    # Použijeme stabilní Linuxový server pro spuštění
+    runs-on: ubuntu-latest 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,18 +19,23 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies and Chromium 🛠️
-        # Níže jsou příkazy pro instalaci headless prohlížeče a Python knihoven.
+      - name: Install dependencies and Chromium
+        # Instalace headless prohlížeče Chromium a všech Python knihoven.
         run: |
+          echo "Instaluji Chromium a Python knihovny..."
+          # Aktualizace systému a instalace Chromium a jeho závislostí
           sudo apt-get update
           sudo apt-get install -y chromium-browser
+          # Instalace Selenium a dalších
           pip install selenium requests beautifulsoup4
 
       - name: Run Python script 🚀
-        # Zde předáváme heslo a uživatele jako Proměnné prostředí.
+        # Předání citlivých Secrets do proměnných prostředí Pythonu
         env:
-          GMAIL_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
         run: |
-          # Spuštění vašeho Python skriptu (ujistěte se, že název souhlasí!)
-          python planetum_kontrola_gmail_pythonanywhere.py
+          echo "Spouštím Python skript..."
+          # Zde je klíčová shoda názvu souboru!
+          python planetum_kontrola_gmail_pythonanywhere.py 
+          echo "Skript dokončen."
