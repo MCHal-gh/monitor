@@ -18,18 +18,23 @@ jobs:
       with:
         python-version: 3.11
 
-    - name: Install dependencies including Chromium and ChromeDriver
+    - name: Install dependencies including Chromium, ChromeDriver, and Python packages
       run: |
         sudo apt-get update
         sudo apt-get install -y libxss1 libappindicator1 libindicator7 build-essential chromium-browser chromium-chromedriver
-        pip install selenium requests beautifulsoup4
+        pip install selenium requests beautifulsoup4 webdriver-manager
 
     - name: Verify Chromium version
       run: chromium-browser --version
 
     - name: Verify ChromeDriver version
       run: chromedriver --version
-      
+
+    - name: Check current directory and files
+      run: |
+        pwd
+        ls -la  # Vypíše obsah kořenového adresáře
+
     - name: Run Selenium test script
       env:
         GMAIL_USER: ${{ secrets.GMAIL_USER }}
