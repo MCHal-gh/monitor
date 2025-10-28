@@ -42,4 +42,4 @@ jobs:
         GMAIL_USER: ${{ secrets.GMAIL_USER }}
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
       run: |
-        python planetum_kontrola_gmail_pythonanywhere.py
+        python /home/runner/work/monitor/monitor/.github/workflows/planetum_kontrola_gmail_pythonanywhere.py
