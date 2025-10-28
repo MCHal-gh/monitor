@@ -2,15 +2,13 @@ name: Kontrola Planetum PythonAnywhere
 
 on:
   schedule:
-    # Běží každou hodinu, v 0 minut, 0 hodin
-    - cron: '0 0 * * *' 
-  workflow_dispatch:
+    - cron: '0 0 * * *'  # Spouští se každý den v půlnoci
+  workflow_dispatch:     # Umožňuje ruční spuštění workflow
 
 jobs:
   run_scraper:
-    # Používáme novější a stabilnější runner
-    runs-on: ubuntu-22.04 
-    
+    runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout kód 📦
         uses: actions/checkout@v4
@@ -18,28 +16,24 @@ jobs:
       - name: Nastavení Python 3.11 🐍
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          
-      - name: Instalace závislostí a Chromium (Klíčový krok) 🛠️
+          python-version: 3.11
+
+      - name: Instalace závislostí a Chromium 🛠️
         run: |
-          echo "Instaluji Selenium, Requests, BeautifulSoup a systémové závislosti pro Chromium..."
-          
-          # 1. Instalace kritických systémových knihoven pro headless mód
+          echo "Instaluji Selenium, Requests, BeautifulSoup a Chromium..."
           sudo apt-get update
           sudo apt-get install -y libxss1 libappindicator1 libindicator7 build-essential
-          
-          # 2. Instalace samotného prohlížeče Chromium
-          sudo apt-get install -y chromium-browser
-          
-          # 3. Instalace Python knihoven
+          sudo apt-get install -y chromium
           pip install selenium requests beautifulsoup4
-          
+
+      - name: Kontrola verze Chromium 🌐
+        run: chromium --version
+
       - name: Run Python script 🚀
         env:
-          # Předání tajných proměnných do skriptu jako proměnné prostředí
-          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
         run: |
-          echo "Spouštím Python skript (cesta: /usr/bin/chromium-browser)..."
-          python planetum_kontrola_gmail_pythonanywhere.py 
+          echo "Spouštím Python skript (chromium binary: /usr/bin/chromium)..."
+          python planetum_kontrola_gmail_pythonanywhere.py
           echo "Skript dokončen."
