@@ -33,4 +33,4 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
         run: |
           # Spuštění vašeho Python skriptu (ujistěte se, že název souhlasí!)
-          python planetum_kontrola.py
+          python planetum_kontrola_gmail_pythonanywhere.py
