@@ -32,9 +32,10 @@ jobs:
 
     - name: Check current directory and files
       run: |
-        pwd
-        ls -la
-        ls -la src/
+          pwd
+          ls -la
+          ls -la src/
+          ls -la scripts/
 
     - name: Run Selenium test script
       env:
