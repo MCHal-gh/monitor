@@ -1,69 +1,113 @@
 import os
 import time
+import smtplib
 import traceback
+from email.mime.text import MIMEText
+from email.utils import formatdate
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
-# --- Konfigurace ---
-GMAIL_USER = os.environ.get("GMAIL_USER")
-GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD")
-WEB_URL = "https://www.pythonanywhere.com/user/planetum/consoles/latest/"
+# ==================================
+# ⚙️ NASTAVENÍ SKRIPTU
+# ==================================
+URL = "https://www.planetum.cz/porad/918-hurvinkova-vesmirna-odysea"
+ODESILATEL = "chaloupecky.milan@gmail.com"
+PRIJEMCE = "milan.chaloupecky@email.com"
+HESLO = "frbcfizgpxjsrmzv"  # Gmail App Password (ne běžné heslo)
+INTERVAL = 3600              # kontrola každou hodinu
+TARGET_TEXT = "Prosinec 2025"
 
-def zkontroluj_stranku_selenium():
-    """Používá Selenium pro přihlášení a kontrolu obsahu."""
-    print("Kontroluji webovou stránku pomocí Selenium...")
 
-    chrome_options = ChromeOptions()
+# ==================================
+# 📧 FUNKCE NA ODESLÁNÍ EMAILU
+# ==================================
+def posli_email(predmet, zprava):
+    """Odešle e-mail pomocí Gmailu (SMTP)."""
+    try:
+        msg = MIMEText(zprava, "plain", "utf-8")
+        msg["Subject"] = predmet
+        msg["From"] = ODESILATEL
+        msg["To"] = PRIJEMCE
+        msg["Date"] = formatdate(localtime=True)
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(ODESILATEL, HESLO)
+            server.send_message(msg)
+            print("✅ E-mail byl úspěšně odeslán.")
+    except smtplib.SMTPAuthenticationError:
+        print("❌ Chyba autentizace – zkontroluj App Password.")
+    except Exception as e:
+        print(f"❌ Chyba při odesílání e-mailu: {e}")
+        traceback.print_exc()
+
+
+# ==================================
+# 🔎 FUNKCE NA KONTROLU STRÁNKY
+# ==================================
+def zkontroluj_stranku_selenium(url):
+    """
+    Načte stránku pomocí Selenium, hledá zadaný text a při nalezení pošle e-mail.
+    """
+    print(f"🔍 Kontroluji stránku: {url}")
+
+    # Nastavení Chrome Options
+    chrome_options = Options()
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--remote-debugging-pipe")
     chrome_options.add_argument("--window-size=1920,1080")
 
-    # Optional: povolit přepsání přes env, jinak NEPŘEPIŠ (Selenium Manager si poradí)
-    chrome_bin = os.environ.get("CHROME_BIN")
-    if chrome_bin:
-        print(f"Používám CHROME_BIN z env: {chrome_bin}")
-        chrome_options.binary_location = chrome_bin
-    else:
-        print("CHROME_BIN není nastaven. Nezadávám binary_location a spoléhám na Selenium Manager / systém.")
-
-    driver = None
+    # ✅ Automatické stažení správného ChromeDriveru
     try:
-        driver = webdriver.Chrome(options=chrome_options)  # Selenium Manager se postará o driver
-        driver.get(WEB_URL)
-        print("Driver spuštěn, načítám stránku:", WEB_URL)
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+    except Exception as e:
+        print(f"❌ Chyba při spouštění ChromeDriveru: {e}")
+        traceback.print_exc()
+        return False
 
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.NAME, "auth-username"))
-        )
+    try:
+        driver.get(url)
+        print("🌐 Stránka načtena, čekám na JavaScript...")
+        time.sleep(5)
 
-        driver.find_element(By.NAME, "auth-username").send_keys(GMAIL_USER or "")
-        driver.find_element(By.NAME, "auth-password").send_keys(GMAIL_PASSWORD or "")
-        driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+        page_text = driver.find_element(By.TAG_NAME, "body").text
 
-        print("Přihlašovací údaje odeslány. Čekám na konzoli...")
-
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "console-container"))
-        )
-
-        print(f"Úspěšně přihlášen a ověřen obsah stránky: {driver.title}")
+        if TARGET_TEXT in page_text:
+            print(f"🎯 Nalezen text '{TARGET_TEXT}'!")
+            posli_email(
+                f"Planetum.cz – nalezen text: {TARGET_TEXT}",
+                f"Na stránce Planetum.cz byl nalezen text '{TARGET_TEXT}'.\n\n{url}"
+            )
+            return True
+        else:
+            print(f"🔎 Text '{TARGET_TEXT}' zatím nenalezen.")
+            return False
 
     except Exception as e:
-        print("Nastala chyba během Selenium operace:")
+        print(f"❌ Chyba během kontroly stránky: {e}")
         traceback.print_exc()
+        return False
     finally:
-        if driver:
-            driver.quit()
-        print("Driver ukončen.")
+        driver.quit()
+        print("🧹 ChromeDriver ukončen.")
 
+
+# ==================================
+# 🔁 HLAVNÍ SMYČKA
+# ==================================
 if __name__ == "__main__":
-    if not GMAIL_USER or not GMAIL_PASSWORD:
-        print("Chyba: Proměnné GMAIL_USER a GMAIL_PASSWORD nejsou nastaveny. Ukončuji.")
-    else:
-        zkontroluj_stranku_selenium()
+    print("▶️ Spouštím monitorovací skript pro Planetum.cz")
+    while True:
+        nalezeno = zkontroluj_stranku_selenium(URL)
+        if nalezeno:
+            print("✅ Podmínka splněna. Skript se ukončuje.")
+            break
+
+        print(f"⏳ Další kontrola za {INTERVAL / 60:.0f} minut...\n")
+        time.sleep(INTERVAL)
