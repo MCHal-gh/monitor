@@ -20,20 +20,35 @@ jobs:
 
       - name: Instalace závislostí a Chromium 🛠️
         run: |
-          echo "Instaluji Selenium, Requests, BeautifulSoup a Chromium..."
+          echo "🔧 Instalace Chromium a Python knihoven..."
           sudo apt-get update
           sudo apt-get install -y libxss1 libappindicator1 libindicator7 build-essential
-          sudo apt-get install -y chromium
+          sudo apt-get install -y chromium-browser || sudo apt-get install -y chromium
+          pip install --upgrade pip
           pip install selenium requests beautifulsoup4
 
-      - name: Kontrola verze Chromium 🌐
-        run: chromium --version
+      - name: Zjisti cestu k Chromium 🔍
+        id: find_chromium
+        run: |
+          set -e
+          chromium_path="$(which chromium || which chromium-browser || true)"
+          if [ -z "$chromium_path" ]; then
+            echo "❌ Chromium nebyl nalezen!"
+            exit 1
+          fi
+          echo "✅ Nalezen Chromium na cestě: $chromium_path"
+          echo "CHROME_BIN=$chromium_path" >> $GITHUB_ENV
 
-      - name: Run Python script 🚀
+      - name: Kontrola verze Chromium 🌐
+        run: |
+          $CHROME_BIN --version
+
+      - name: Spuštění Python skriptu 🚀
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          CHROME_BIN: ${{ env.CHROME_BIN }}
         run: |
-          echo "Spouštím Python skript (chromium binary: /usr/bin/chromium)..."
+          echo "▶️ Spouštím Python skript s Chromiem: $CHROME_BIN"
           python planetum_kontrola_gmail_pythonanywhere.py
-          echo "Skript dokončen."
+          echo "✅ Skript dokončen."
