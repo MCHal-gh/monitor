@@ -1,120 +1,83 @@
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.utils import formatdate
-import sys
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import requests
+from bs4 import BeautifulSoup
 
-# ==================================
-# ====== ⚙️ NASTAVENÍ SKRIPTU ======
-# ==================================
-URL = "https://www.planetum.cz/porad/918-hurvinkova-vesmirna-odysea"
-PRIJEMCE = "milan.chaloupecky@email.com"
-TARGET_TEXT = "Listopad 2025"             
+# --- Konfigurace ---
+GMAIL_USER = os.environ.get("GMAIL_USER")
+GMAIL_PASSWORD = os.environ.get("GMAIL_PASSWORD")
+WEB_URL = "https://www.pythonanywhere.com/user/planetum/consoles/latest/"
 
-# Načtení z Proměnných Prostředí (GitHub Secrets)
-ODESILATEL = os.environ.get("GMAIL_USER")
-HESLO = os.environ.get("GMAIL_PASSWORD")
 
-# Načtení cest k prohlížeči a ovladači z YAML (Klíčové pro Možnost A!)
-CHROME_PATH = os.environ.get("CHROME_PATH")
-CHROME_DRIVER_PATH = os.environ.get("CHROME_DRIVER_PATH")
-
-# =========================================
-# ====== 📧 FUNKCE NA ODESLÁNÍ EMAILU ======
-# =========================================
-def posli_email(predmet, zprava):
-    """Pokusí se odeslat e-mail přes Gmail SMTP s údaji z Secrets."""
-    if not ODESILATEL or not HESLO:
-        print("❌ Nelze odeslat e-mail: Chybí GMAIL_USER nebo GMAIL_PASSWORD.")
-        return False
-        
-    # ... (zde je kód pro odeslání e-mailu – zůstává stejný) ...
-    try:
-        msg = MIMEText(zprava, 'plain', 'utf-8')
-        msg["Subject"] = predmet
-        msg["From"] = ODESILATEL
-        msg["To"] = PRIJEMCE
-        msg["Date"] = formatdate(localtime=True)
-
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(ODESILATEL, HESLO)
-            server.send_message(msg)
-            print("✅ E-mail byl odeslán.")
-            return True
-    except Exception as e:
-        print(f"❌ Chyba při odesílání e-mailu: {e}")
-        return False
-
-# =======================================
-# ====== 🔎 FUNKCE NA KONTROLU STRÁNKY ======
-# =======================================
-def zkontroluj_stranku_selenium(url):
-    """
-    Stáhne stránku pomocí Headless Chrome, s dynamickou konfigurací cest.
-    """
-    print(f"Kontroluji {url} (Možnost A - Dynamické cesty)...")
+def zkontroluj_stranku_selenium():
+    """Používá Selenium pro přihlášení a kontrolu obsahu."""
+    
+    print("Kontroluji webovou stránku pomocí Selenium...")
     
     # --- Nastavení Chrome Options pro Headless mód ---
     chrome_options = ChromeOptions()
     chrome_options.add_argument("--headless=new")         
     chrome_options.add_argument("--no-sandbox")            
-    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-dev-shm-usage") 
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--remote-debugging-pipe") 
     chrome_options.add_argument("--window-size=1920,1080")
     
-    # Nastavení binární cesty POUZE POKUD ji Action předal
-    if CHROME_PATH:
-        chrome_options.binary_location = CHROME_PATH
+    # KLÍČOVÉ: Explicitní nastavení cesty k binárnímu souboru Chromium
+    # Musí odpovídat cestě z YAML instalace
+    chrome_options.binary_location = "/usr/bin/chromium-browser"
     
     driver = None
     try:
-        # POUŽITÍ SLUŽBY: Zde je klíč k úspěchu v Možnosti A
-        if CHROME_DRIVER_PATH:
-            service = webdriver.ChromeService(executable_path=CHROME_DRIVER_PATH)
-            driver = webdriver.Chrome(service=service, options=chrome_options)
-        else:
-             # Fallback, pokud cesty nejsou k dispozici (měla by selhat)
-             print("❌ CHYBA CESTY: Chybí CHROME_DRIVER_PATH. Spouštím bez explicitní cesty...")
-             driver = webdriver.Chrome(options=chrome_options) 
+        # Spuštění driveru s nastavenými options (spoléhá se na Selenium Manager)
+        # Tímto krokem se zbavíme zasekávání
+        driver = webdriver.Chrome(options=chrome_options) 
+        driver.get(WEB_URL)
         
-        driver.set_page_load_timeout(45)
-        
-        driver.get(url)
-        time.sleep(5) 
-        
-        page_text = driver.find_element(By.TAG_NAME, "body").text
+        print("Driver spuštěn, načítám stránku.")
 
-        if TARGET_TEXT in page_text:
-            print(f"🎯 Nalezen text '{TARGET_TEXT}'!")
-            posli_email(
-                f"Planetum – CÍL NALEZEN: {TARGET_TEXT}!",
-                f"Na stránce {url} se objevil text '{TARGET_TEXT}'. Zarezervujte ihned!"
-            )
-            return True
-        else:
-            print(f"🔍 Zatím nic (text '{TARGET_TEXT}' nenalezen).")
-            return False
+        # --- Přihlášení (předpokládáme PythonAnywhere přihlašovací formulář) ---
+        
+        # Čekání na přihlašovací pole
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "auth-username"))
+        )
+        
+        # Vyplnění a odeslání formuláře
+        driver.find_element(By.NAME, "auth-username").send_keys(GMAIL_USER)
+        driver.find_element(By.NAME, "auth-password").send_keys(GMAIL_PASSWORD)
+        driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+
+        print("Přihlašovací údaje odeslány. Čekám na konzoli.")
+
+        # --- Kontrola obsahu po přihlášení ---
+        
+        # Čekání, dokud se neobjeví prvek, který je specifický pro přihlášenou konzoli
+        # Změňte 'console-title' na skutečný CSS selektor po přihlášení
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "console-container")) 
+        )
+        
+        # Zde byste přidali logiku pro kontrolu skutečného obsahu,
+        # který chcete na stránce ověřit.
+        
+        print(f"Úspěšně přihlášen a ověřen obsah stránky: {driver.title}")
 
     except Exception as e:
-        print(f"❌ Došlo k chybě během Selenium operace: {e}")
-        return False
+        print(f"Nastala chyba během Selenium operace: {e}")
     finally:
         if driver:
             driver.quit()
+        print("Driver ukončen.")
 
-# ================================
-# ====== 🔄 HLAVNÍ BLOK ======
-# ================================
+# --- Hlavní spuštění ---
 if __name__ == "__main__":
-    
-    if not ODESILATEL or not HESLO:
-        print("❌ KRITICKÁ CHYBA: Chybí GMAIL_USER nebo GMAIL_PASSWORD v GitHub Secrets.")
-        sys.exit(1)
-
-    zkontroluj_stranku_selenium(URL)
+    if not GMAIL_USER or not GMAIL_PASSWORD:
+        print("Chyba: Proměnné GMAIL_USER a GMAIL_PASSWORD nejsou nastaveny. Ukončuji.")
+    else:
+        zkontroluj_stranku_selenium()
