@@ -20,7 +20,7 @@ TARGET_TEXT = "Prosinec 2025"
 # Gmail údaje načítané z GitHub Secrets
 ODESILATEL = os.environ.get("GMAIL_USER")
 HESLO = os.environ.get("GMAIL_APP_PASSWORD")
-PRIJEMCE = ODESILATEL  # např. posíláme e-mail sobě
+PRIJEMCE = "milan.chaloupecky@email.com"
 INTERVAL = 3300  # kontrola každou hodinu
 
 # ==================================
