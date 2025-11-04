@@ -1,11 +1,11 @@
 name: Selenium testy na Ubuntu
 
-on:
-  schedule:
-    - cron: '5 0 * * *'   # Spuštění každý den o 0:5
-    - cron: '5 12 * * *'   # Spuštění každý den o 12:05
-    - cron: '55 19 * * *'   # Spuštění každý den o půlnoci
-  workflow_dispatch:      # Umožňuje ruční spuštění workflow
+# on:
+ # schedule:
+ #   - cron: '5 0 * * *'   # Spuštění každý den o 0:5
+ #   - cron: '5 12 * * *'   # Spuštění každý den o 12:05
+ #   - cron: '55 19 * * *'   # Spuštění každý den o půlnoci
+ # workflow_dispatch:      # Umožňuje ruční spuštění workflow
 
 jobs:
   selenium_tests:
